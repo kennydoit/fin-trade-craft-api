@@ -1,11 +1,11 @@
 # Database connectivity
-snowflake-connector-python>=3.6.0
+snowflake-connector-python>=3.13.1
 
 # AWS S3 connectivity
 boto3>=1.34.0
 
 # API Framework
-fastapi>=0.109.0
+fastapi>=0.109.1
 uvicorn[standard]>=0.27.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
