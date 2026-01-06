@@ -1,7 +1,7 @@
 """Snowflake database client."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import pandas as pd
 import snowflake.connector

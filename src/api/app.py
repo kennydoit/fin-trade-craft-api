@@ -1,10 +1,11 @@
 """FastAPI application for serving flat files from S3."""
 
+import json
 import logging
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from src.config import get_settings
@@ -146,7 +147,7 @@ async def get_file_content(file_key: str):
         
         # Determine content type based on file extension
         if file_key.endswith(".json"):
-            return JSONResponse(content=content.decode("utf-8"))
+            return JSONResponse(content=json.loads(content.decode("utf-8")))
         elif file_key.endswith(".csv"):
             return JSONResponse(
                 content={"data": content.decode("utf-8")},
