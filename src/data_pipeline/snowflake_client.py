@@ -125,10 +125,20 @@ class SnowflakeClient:
         query = f"SELECT {column_list} FROM {table_name}"
         
         if where_clause:
-            # Validate WHERE clause contains only safe characters (basic check)
-            # This is NOT foolproof - only use with trusted sources
-            if any(char in where_clause for char in [';', '--', '/*', '*/', 'DROP', 'DELETE', 'UPDATE', 'INSERT']):
-                raise ValueError("WHERE clause contains potentially dangerous SQL keywords or characters")
+            # Validate WHERE clause for dangerous SQL keywords and patterns
+            # This is a defense-in-depth measure - always use trusted sources for WHERE clauses
+            dangerous_patterns = [
+                ';', '--', '/*', '*/',
+                'DROP', 'DELETE', 'UPDATE', 'INSERT',
+                'EXEC', 'EXECUTE', 'UNION', 'SELECT',
+                'TRUNCATE', 'ALTER', 'CREATE', 'MERGE'
+            ]
+            where_upper = where_clause.upper()
+            
+            for pattern in dangerous_patterns:
+                if pattern.upper() in where_upper:
+                    raise ValueError(f"WHERE clause contains potentially dangerous SQL pattern: {pattern}")
+            
             logger.warning("WHERE clause provided. Ensure it is from a trusted source to prevent SQL injection.")
             query += f" WHERE {where_clause}"
         
