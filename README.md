@@ -198,6 +198,16 @@ fin-trade-craft-api/
 - Implement rate limiting and authentication for production API deployments
 - Regularly rotate Snowflake and AWS credentials
 - Use presigned URLs with appropriate expiration times for file access
+- **SQL Injection Prevention**: When using `get_table_data()` or custom queries, ensure table names and WHERE clauses come from trusted sources. The API validates table/column names but WHERE clauses should be carefully controlled
+- **Input Validation**: The system validates table and column names to prevent SQL injection, but always validate user inputs
+- **Memory Limits**: File operations load data into memory. Set appropriate limits for file sizes (default 10MB for content endpoint)
+- **Version Pinning**: Dependencies use compatible release (`~=`) versioning to balance security updates with stability
+
+### Known Limitations
+
+- **Large File Handling**: CSV/JSON file operations load entire datasets into memory. For files >1GB, consider implementing streaming or chunked processing
+- **WHERE Clause Security**: Custom WHERE clauses are not parameterized and should only come from trusted sources
+- **No Built-in Authentication**: Production deployments should add authentication middleware (OAuth2, API keys, etc.)
 
 ## Development
 

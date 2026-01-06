@@ -132,12 +132,13 @@ async def get_download_url(
 
 
 @app.get("/files/{file_key:path}/content")
-async def get_file_content(file_key: str):
+async def get_file_content(file_key: str, max_size_mb: int = Query(10, description="Maximum file size to read in MB")):
     """
     Get the content of a file directly.
 
     Args:
         file_key: S3 object key (file path)
+        max_size_mb: Maximum file size to read in MB (default: 10MB)
 
     Returns:
         File content
@@ -145,9 +146,24 @@ async def get_file_content(file_key: str):
     try:
         content = s3_writer.read_file(file_key)
         
+        # Check file size limit
+        max_size_bytes = max_size_mb * 1024 * 1024
+        if len(content) > max_size_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size exceeds maximum allowed size of {max_size_mb}MB"
+            )
+        
         # Determine content type based on file extension
         if file_key.endswith(".json"):
-            return JSONResponse(content=json.loads(content.decode("utf-8")))
+            try:
+                parsed_json = json.loads(content.decode("utf-8"))
+                return JSONResponse(content=parsed_json)
+            except json.JSONDecodeError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid JSON content: {str(e)}"
+                )
         elif file_key.endswith(".csv"):
             return JSONResponse(
                 content={"data": content.decode("utf-8")},
@@ -155,6 +171,8 @@ async def get_file_content(file_key: str):
             )
         else:
             return {"content": content.decode("utf-8")}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to retrieve file content: {e}")
         raise HTTPException(

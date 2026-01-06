@@ -48,12 +48,13 @@ class SnowflakeClient:
             self._connection = None
             logger.info("Disconnected from Snowflake")
 
-    def execute_query(self, query: str) -> pd.DataFrame:
+    def execute_query(self, query: str, sanitize_log: bool = True) -> pd.DataFrame:
         """
         Execute a SQL query and return results as a pandas DataFrame.
 
         Args:
             query: SQL query to execute
+            sanitize_log: Whether to sanitize the query in logs
 
         Returns:
             DataFrame containing query results
@@ -62,7 +63,12 @@ class SnowflakeClient:
             self.connect()
 
         try:
-            logger.info(f"Executing query: {query[:100]}...")
+            # Sanitize query for logging to avoid exposing sensitive data
+            log_query = query[:100] + "..." if len(query) > 100 else query
+            if sanitize_log:
+                log_query = "<query redacted for security>"
+            logger.info(f"Executing query: {log_query}")
+            
             cursor = self._connection.cursor()
             cursor.execute(query)
             
@@ -89,24 +95,46 @@ class SnowflakeClient:
         Retrieve data from a specific table.
 
         Args:
-            table_name: Name of the table to query
+            table_name: Name of the table to query (should be validated/sanitized by caller)
             columns: List of columns to select (default: all columns)
-            where_clause: Optional WHERE clause for filtering
+            where_clause: Optional WHERE clause for filtering (should be validated/sanitized by caller)
             limit: Optional limit on number of rows
 
         Returns:
             DataFrame containing table data
+            
+        Note:
+            This method does not sanitize table_name or where_clause for SQL injection.
+            Ensure these parameters come from trusted sources or are properly validated
+            before calling this method. Consider using parameterized queries for user inputs.
         """
+        # Validate table name contains only allowed characters
+        import re
+        if not re.match(r'^[a-zA-Z0-9_\.]+$', table_name):
+            raise ValueError(f"Invalid table name: {table_name}. Only alphanumeric, underscore, and dot characters are allowed.")
+        
         column_list = ", ".join(columns) if columns else "*"
+        
+        # Validate column names if provided
+        if columns:
+            for col in columns:
+                if not re.match(r'^[a-zA-Z0-9_]+$', col):
+                    raise ValueError(f"Invalid column name: {col}. Only alphanumeric and underscore characters are allowed.")
+        
         query = f"SELECT {column_list} FROM {table_name}"
         
         if where_clause:
+            # Log warning about potential SQL injection
+            logger.warning("WHERE clause provided. Ensure it is from a trusted source to prevent SQL injection.")
             query += f" WHERE {where_clause}"
         
         if limit:
+            # Validate limit is an integer
+            if not isinstance(limit, int) or limit < 0:
+                raise ValueError(f"Invalid limit: {limit}. Must be a non-negative integer.")
             query += f" LIMIT {limit}"
         
-        return self.execute_query(query)
+        return self.execute_query(query, sanitize_log=False)
 
     def __enter__(self):
         """Context manager entry."""

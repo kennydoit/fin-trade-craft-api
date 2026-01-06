@@ -45,6 +45,10 @@ class S3Writer:
 
         Returns:
             S3 URI of the written file
+            
+        Note:
+            For large datasets, this method loads the entire CSV into memory.
+            Consider implementing chunked uploads for datasets larger than 1GB.
         """
         try:
             csv_buffer = StringIO()
@@ -157,6 +161,10 @@ class S3Writer:
 
         Returns:
             File content as bytes
+            
+        Note:
+            This method loads the entire file into memory. For large files (>100MB),
+            consider using streaming reads or downloading to disk instead.
         """
         try:
             response = self.s3_client.get_object(
