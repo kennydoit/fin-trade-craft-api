@@ -1,6 +1,7 @@
 """Snowflake database client."""
 
 import logging
+import re
 from typing import List, Optional
 
 import pandas as pd
@@ -103,13 +104,13 @@ class SnowflakeClient:
         Returns:
             DataFrame containing table data
             
-        Note:
-            This method does not sanitize table_name or where_clause for SQL injection.
-            Ensure these parameters come from trusted sources or are properly validated
-            before calling this method. Consider using parameterized queries for user inputs.
+        Warning:
+            This method does not fully sanitize where_clause for SQL injection.
+            Only use where_clause with trusted inputs or implement additional validation.
+            For user-provided filters, consider using a parameterized query approach
+            or a query builder library instead of this method.
         """
         # Validate table name contains only allowed characters
-        import re
         if not re.match(r'^[a-zA-Z0-9_\.]+$', table_name):
             raise ValueError(f"Invalid table name: {table_name}. Only alphanumeric, underscore, and dot characters are allowed.")
         
@@ -124,7 +125,10 @@ class SnowflakeClient:
         query = f"SELECT {column_list} FROM {table_name}"
         
         if where_clause:
-            # Log warning about potential SQL injection
+            # Validate WHERE clause contains only safe characters (basic check)
+            # This is NOT foolproof - only use with trusted sources
+            if any(char in where_clause for char in [';', '--', '/*', '*/', 'DROP', 'DELETE', 'UPDATE', 'INSERT']):
+                raise ValueError("WHERE clause contains potentially dangerous SQL keywords or characters")
             logger.warning("WHERE clause provided. Ensure it is from a trusted source to prevent SQL injection.")
             query += f" WHERE {where_clause}"
         

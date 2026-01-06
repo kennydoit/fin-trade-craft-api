@@ -165,12 +165,28 @@ async def get_file_content(file_key: str, max_size_mb: int = Query(10, descripti
                     detail=f"Invalid JSON content: {str(e)}"
                 )
         elif file_key.endswith(".csv"):
-            return JSONResponse(
-                content={"data": content.decode("utf-8")},
-                media_type="text/csv",
-            )
+            try:
+                return JSONResponse(
+                    content={"data": content.decode("utf-8")},
+                    media_type="text/csv",
+                )
+            except UnicodeDecodeError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unable to decode CSV file as UTF-8: {str(e)}"
+                )
         else:
-            return {"content": content.decode("utf-8")}
+            # For other file types, attempt UTF-8 decode with error handling
+            try:
+                return {"content": content.decode("utf-8")}
+            except UnicodeDecodeError:
+                # If UTF-8 fails, return as base64 encoded binary
+                import base64
+                return {
+                    "content": base64.b64encode(content).decode("ascii"),
+                    "encoding": "base64",
+                    "note": "Binary content encoded as base64"
+                }
     except HTTPException:
         raise
     except Exception as e:
